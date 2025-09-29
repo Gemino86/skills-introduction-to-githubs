@@ -25,32 +25,15 @@ export async function updateSession(request: NextRequest) {
     },
   )
 
-  const path = request.nextUrl.pathname
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  // Always allow root and auth routes through without checks
-  if (path === "/" || path.startsWith("/auth/")) {
-    return supabaseResponse
-  }
-
-  // For all other routes, check authentication
-  try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    // Redirect to login if not authenticated
-    if (!user) {
-      const url = request.nextUrl.clone()
-      url.pathname = "/auth/login"
-      return NextResponse.redirect(url)
-    }
-
-    return supabaseResponse
-  } catch (error) {
-    // On error, redirect to login to be safe
-    console.error("[v0] Middleware auth error:", error)
+  if (request.nextUrl.pathname !== "/" && !user && !request.nextUrl.pathname.startsWith("/auth")) {
     const url = request.nextUrl.clone()
     url.pathname = "/auth/login"
     return NextResponse.redirect(url)
   }
+
+  return supabaseResponse
 }
