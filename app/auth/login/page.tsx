@@ -20,20 +20,39 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log("[v0] Login attempt started", { email })
     const supabase = createClient()
     setIsLoading(true)
     setError(null)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
-      if (error) throw error
 
-      window.location.href = "/dashboard"
+      console.log("[v0] Login response:", { data, error })
+
+      if (error) {
+        console.error("[v0] Login error:", error)
+        throw error
+      }
+
+      if (data.user) {
+        console.log("[v0] Login successful, redirecting to dashboard")
+        window.location.href = "/dashboard"
+      }
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred")
+      console.error("[v0] Login catch block:", error)
+      const errorMessage = error instanceof Error ? error.message : "An error occurred"
+
+      if (errorMessage.includes("Email not confirmed")) {
+        setError("Please confirm your email address before signing in. Check your inbox for the confirmation link.")
+      } else if (errorMessage.includes("Invalid login credentials")) {
+        setError("Invalid email or password. Please try again.")
+      } else {
+        setError(errorMessage)
+      }
     } finally {
       setIsLoading(false)
     }

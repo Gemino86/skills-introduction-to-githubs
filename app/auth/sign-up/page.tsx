@@ -18,17 +18,19 @@ export default function SignUpPage() {
   const [fullName, setFullName] = useState("")
   const [role, setRole] = useState<"agent" | "admin">("agent")
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log("[v0] Sign up attempt started", { email, fullName, role })
     const supabase = createClient()
     setIsLoading(true)
     setError(null)
+    setSuccess(null)
 
     try {
-      // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -41,12 +43,22 @@ export default function SignUpPage() {
         },
       })
 
-      if (authError) throw authError
+      console.log("[v0] Sign up response:", { authData, authError })
 
-      if (authData.user) {
+      if (authError) {
+        console.error("[v0] Sign up error:", authError)
+        throw authError
+      }
+
+      if (authData.user && !authData.session) {
+        console.log("[v0] Email confirmation required")
+        setSuccess("Account created! Please check your email to confirm your account before signing in.")
+      } else if (authData.user && authData.session) {
+        console.log("[v0] Sign up successful with session, redirecting to dashboard")
         window.location.href = "/dashboard"
       }
     } catch (error: unknown) {
+      console.error("[v0] Sign up catch block:", error)
       setError(error instanceof Error ? error.message : "An error occurred")
     } finally {
       setIsLoading(false)
@@ -109,6 +121,7 @@ export default function SignUpPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                {success && <p className="text-sm text-green-600">{success}</p>}
                 {error && <p className="text-sm text-red-500">{error}</p>}
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Creating account..." : "Create account"}
