@@ -509,12 +509,15 @@ export default function AdminDashboard({ profile }: { profile: Profile }) {
                       <CardDescription>Analyze team and individual performance trends</CardDescription>
                     </div>
                     <div className="flex gap-2">
-                      <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                      <Select
+                        value={selectedAgentId || "all"}
+                        onValueChange={(v) => setSelectedAgentId(v === "all" ? "" : v)}
+                      >
                         <SelectTrigger className="w-[200px]">
                           <SelectValue placeholder="All Agents" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All Agents</SelectItem>
+                          <SelectItem value="all">All Agents</SelectItem>
                           {agents.map((agent) => (
                             <SelectItem key={agent.id} value={agent.id}>
                               {agent.full_name}
