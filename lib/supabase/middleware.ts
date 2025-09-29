@@ -25,25 +25,20 @@ export async function updateSession(request: NextRequest) {
     },
   )
 
+  const path = request.nextUrl.pathname
+
+  // Always allow root and auth routes through without checks
+  if (path === "/" || path.startsWith("/auth/")) {
+    return supabaseResponse
+  }
+
+  // For all other routes, check authentication
   try {
     const {
       data: { user },
     } = await supabase.auth.getUser()
 
-    const path = request.nextUrl.pathname
-
-    // Allow public routes
-    if (path === "/" || path.startsWith("/auth")) {
-      // If user is authenticated and on auth pages, redirect to dashboard
-      if (user && path.startsWith("/auth")) {
-        const url = request.nextUrl.clone()
-        url.pathname = "/dashboard"
-        return NextResponse.redirect(url)
-      }
-      return supabaseResponse
-    }
-
-    // Protect all other routes - redirect to login if not authenticated
+    // Redirect to login if not authenticated
     if (!user) {
       const url = request.nextUrl.clone()
       url.pathname = "/auth/login"
@@ -52,9 +47,10 @@ export async function updateSession(request: NextRequest) {
 
     return supabaseResponse
   } catch (error) {
-    // If there's an error checking auth, allow the request through
-    // This prevents redirect loops from auth errors
+    // On error, redirect to login to be safe
     console.error("[v0] Middleware auth error:", error)
-    return supabaseResponse
+    const url = request.nextUrl.clone()
+    url.pathname = "/auth/login"
+    return NextResponse.redirect(url)
   }
 }
