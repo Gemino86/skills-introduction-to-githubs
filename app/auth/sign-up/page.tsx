@@ -44,9 +44,7 @@ export default function SignUpPage() {
       if (authError) throw authError
 
       if (authData.user) {
-        // Profile will be created automatically by the database trigger
-        router.push("/dashboard")
-        router.refresh()
+        window.location.href = "/dashboard"
       }
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred")
