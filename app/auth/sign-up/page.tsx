@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import Link from "next/link"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Mail } from "lucide-react"
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("")
@@ -20,15 +22,16 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [showResend, setShowResend] = useState(false)
   const router = useRouter()
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("[v0] Sign up attempt started", { email, fullName, role })
     const supabase = createClient()
     setIsLoading(true)
     setError(null)
     setSuccess(null)
+    setShowResend(false)
 
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -43,23 +46,39 @@ export default function SignUpPage() {
         },
       })
 
-      console.log("[v0] Sign up response:", { authData, authError })
-
       if (authError) {
-        console.error("[v0] Sign up error:", authError)
         throw authError
       }
 
       if (authData.user && !authData.session) {
-        console.log("[v0] Email confirmation required")
-        setSuccess("Account created! Please check your email to confirm your account before signing in.")
+        setSuccess("confirmation-needed")
+        setShowResend(true)
       } else if (authData.user && authData.session) {
-        console.log("[v0] Sign up successful with session, redirecting to dashboard")
-        window.location.href = "/dashboard"
+        router.push("/dashboard")
       }
     } catch (error: unknown) {
-      console.error("[v0] Sign up catch block:", error)
       setError(error instanceof Error ? error.message : "An error occurred")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleResendConfirmation = async () => {
+    const supabase = createClient()
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: email,
+      })
+
+      if (error) throw error
+
+      setSuccess("resent")
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "Failed to resend email")
     } finally {
       setIsLoading(false)
     }
@@ -74,6 +93,43 @@ export default function SignUpPage() {
             <CardDescription>Sign up to start tracking productivity</CardDescription>
           </CardHeader>
           <CardContent>
+            {success === "confirmation-needed" && (
+              <Alert className="mb-4">
+                <Mail className="h-4 w-4" />
+                <AlertTitle>Check your email</AlertTitle>
+                <AlertDescription className="space-y-2">
+                  <p className="text-sm">
+                    We've sent a confirmation link to <strong>{email}</strong>
+                  </p>
+                  <p className="text-sm text-muted-foreground">If you don't see it:</p>
+                  <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                    <li>Check your spam/junk folder</li>
+                    <li>Wait a few minutes for delivery</li>
+                    <li>Click the button below to resend</li>
+                  </ul>
+                  {showResend && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleResendConfirmation}
+                      disabled={isLoading}
+                      className="w-full mt-2 bg-transparent"
+                    >
+                      {isLoading ? "Sending..." : "Resend confirmation email"}
+                    </Button>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {success === "resent" && (
+              <Alert className="mb-4">
+                <Mail className="h-4 w-4" />
+                <AlertTitle>Email sent!</AlertTitle>
+                <AlertDescription>Check your inbox and spam folder for the confirmation link.</AlertDescription>
+              </Alert>
+            )}
+
             <form onSubmit={handleSignUp}>
               <div className="flex flex-col gap-4">
                 <div className="grid gap-2">
@@ -121,7 +177,6 @@ export default function SignUpPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                {success && <p className="text-sm text-green-600">{success}</p>}
                 {error && <p className="text-sm text-red-500">{error}</p>}
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Creating account..." : "Create account"}
